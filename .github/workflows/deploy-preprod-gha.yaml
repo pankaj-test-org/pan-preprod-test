@@ -32,6 +32,6 @@ jobs:
           env:
             CLOUDBEES_API_URL: "https://api.saas-preprod.beescloud.com"
 #            TARGET_ENVIRONMENT: "PANPREPRODTEST"
-            TARGET_ENVIRONMENT: "Production"
+            TARGET_ENVIRONMENT: "PREPROD"
             ARTIFACT_ID: ${{ steps.register-build-artifact.outputs.cbp_artifact_id }}
             DEPLOYMENT_LABELS: "test"
