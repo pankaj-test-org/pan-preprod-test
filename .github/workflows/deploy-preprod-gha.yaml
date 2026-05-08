@@ -3,7 +3,7 @@ on:
     push                                                                                                                                                                                                                                            
 jobs:                                                                                                                                                                                                                                             
     register-artifact:   
-      name: register artifact
+#      name: register artifact
       runs-on: ubuntu-latest
       permissions:                                                                                                                                                                                                                                  
         id-token: write                                                                                                                                                                                                                             
@@ -31,7 +31,7 @@ jobs:
 #          uses: docker://public.ecr.aws/cloudbees/actions/gha-register-deployed-artifact:main-8d819ee6c37734d240bc3e399c7515d85aa14f76
           env:
             CLOUDBEES_API_URL: "https://api.saas-preprod.beescloud.com"
-#            TARGET_ENVIRONMENT: "PANPREPRODTEST"
-            TARGET_ENVIRONMENT: "PREPROD"
+            TARGET_ENVIRONMENT: "PANPREPRODTEST"
+#            TARGET_ENVIRONMENT: "PREPROD"
             ARTIFACT_ID: ${{ steps.register-build-artifact.outputs.cbp_artifact_id }}
             DEPLOYMENT_LABELS: "test"
