@@ -3,7 +3,7 @@ on:
     push                                                                                                                                                                                                                                            
 jobs:                                                                                                                                                                                                                                             
     register-artifact:   
-      name: register artifact
+#      name: register artifact
       runs-on: ubuntu-latest
       permissions:                                                                                                                                                                                                                                  
         id-token: write                                                                                                                                                                                                                             
