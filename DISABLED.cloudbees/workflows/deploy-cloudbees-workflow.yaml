@@ -25,5 +25,5 @@ jobs:
         kind: deploy
         with:
           artifact-id: ${{ steps.build.outputs.artifact-id }}
-          target-environment: PREPROD
+          target-environment: PANPREPRODTEST
         uses: cloudbees-io/register-deployed-artifact@v2
