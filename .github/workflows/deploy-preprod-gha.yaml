@@ -3,7 +3,7 @@ on:
     push                                                                                                                                                                                                                                            
 jobs:                                                                                                                                                                                                                                             
     register-artifact:   
-#      name: register artifact
+      name: register artifact
       runs-on: ubuntu-latest
       permissions:                                                                                                                                                                                                                                  
         id-token: write                                                                                                                                                                                                                             
@@ -20,7 +20,7 @@ jobs:
           with:                                                                                                                                                                                                                                     
             cloudbees-url: "https://api.saas-preprod.beescloud.com"                                                                                                                                                                                 
             name: pan-artifact-gha-8-may
-            url: "https://example.com/pan-artifact-gha-8-may/1.0.0"
+            url: "https://example.com/pan-artifact-gha-8-may/1.0.0-yad-1"
             version: 1.0.0                                                                                                                                                                                                                          
         - name: Print artifact id                                                                                                                                                                                                                   
           run: |                                                                                                                                                                                                                                    
