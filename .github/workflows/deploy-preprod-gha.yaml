@@ -8,11 +8,19 @@ jobs:
       permissions:                                                                                                                                                                                                                                  
         id-token: write                                                                                                                                                                                                                             
         contents: read                                                                                                                                                                                                                              
-      steps:                                                                                                                                                                                                                                        
-        - name: Checkout code                                                                                                                                                                                                                       
-          uses: actions/checkout@v6                                                                                                                                                                                                                 
-        - name: Build                                                                                                                                                                                                                               
-          run: |                                                                                                                                                                                                                                    
+      steps:
+        - name: Debug - Print Job Context
+          run: |
+            echo "=== Job Context Values ==="
+            echo "job.check_run_id: ${{ job.check_run_id }}"
+            echo "github.job: ${{ github.job }}"
+            echo "github.run_id: ${{ github.run_id }}"
+            echo "=== Full Job Context ==="
+            echo '${{ toJSON(job) }}'
+        - name: Checkout code
+          uses: actions/checkout@v6
+        - name: Build
+          run: |
             sleep 10                                                                                                                                                                                                                                
         - id: register-build-artifact
 #          name: Register build artifact
