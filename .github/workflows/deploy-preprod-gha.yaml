@@ -3,7 +3,7 @@ on:
     push                                                                                                                                                                                                                                            
 jobs:                                                                                                                                                                                                                                             
     register-artifact:   
-#      name: 75726799473934
+#      name: odio anim sit consetetur commodi
       runs-on: ubuntu-latest
       permissions:                                                                                                                                                                                                                                  
         id-token: write                                                                                                                                                                                                                             
