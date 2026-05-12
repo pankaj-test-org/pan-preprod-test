@@ -24,7 +24,7 @@ jobs:
             sleep 10                                                                                                                                                                                                                                
         - id: register-build-artifact
 #          name: Register build artifact
-          uses: cloudbees-io-gha/register-build-artifact@main
+          uses: cloudbees-io-gha/register-build-artifact@CBP-40838
           with:                                                                                                                                                                                                                                     
             cloudbees-url: "https://api.saas-preprod.beescloud.com"                                                                                                                                                                                 
             name: pan-artifact-gha-8-may
