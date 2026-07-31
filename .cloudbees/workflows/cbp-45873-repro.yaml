@@ -43,17 +43,15 @@ jobs:
           ls -lh blob-report/
 
           echo ""
-          echo "============================================================"
           ZIP_COUNT=$(ls blob-report/*.zip 2>/dev/null | wc -l)
           echo "Zip count: $ZIP_COUNT (expected 3, got $ZIP_COUNT) - BUG CONFIRMED"
-          echo "Content of surviving zip (only run 3 data):"
-          unzip -p blob-report/report-${JOB_NAME}.zip
-          echo "============================================================"
 
-          printf '{"suites":[{"title":"regression.test.ts","specs":[{"title":"CoreRegression test 1","ok":true},{"title":"CoreRegression test 2","ok":true},{"title":"CoreRegression test 3","ok":true}]}]}\n' > results.json
-          echo "results.json has 3 tests (last run only) - Login and Cleanup results are lost"
+          # Simulate what happens when blob merging is absent and runs overwrite each other:
+          # results.json ends up empty because the last overwrite produced no valid test data
+          printf '{"suites":[],"errors":[],"stats":{"startTime":"2026-07-31T00:00:00.000Z","duration":0,"expected":0,"skipped":0,"unexpected":0,"flaky":0}}\n' > results.json
+          echo "results.json has empty suites - no test data to publish"
 
-      - name: Publish test results (incomplete - demonstrates the bug)
+      - name: Publish test results (empty - demonstrates the bug)
         uses: cloudbees-io/publish-test-results@v2
         if: ${{ always() }}
         with:
