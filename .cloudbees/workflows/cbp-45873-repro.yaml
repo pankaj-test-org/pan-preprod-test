@@ -16,62 +16,42 @@ jobs:
       - name: Reproduce blob report overwrite bug
         uses: docker://alpine:3.19
         run: |
+          apk add --no-cache zip > /dev/null 2>&1
           mkdir -p blob-report
 
           echo "============================================================"
           echo "REPRODUCING BUG: multiple test runs without JOB_NAME set"
-          echo "Each run writes to blob-report/report-\${JOB_NAME}.zip"
-          echo "When JOB_NAME is unset, all runs write report-undefined.zip"
+          echo "All runs write to the same blob-report/report-.zip file"
           echo "============================================================"
 
-          # --- Run 1: Login step ---
-          # JOB_NAME not set → writes report-undefined.zip
-          echo "Run 1 (@Login results)" > /tmp/run1.txt
+          # Run 1: Login step - no JOB_NAME set
+          printf 'run1-login-results\n' > /tmp/run1.txt
           zip -j blob-report/report-${JOB_NAME}.zip /tmp/run1.txt
-          echo "[Run 1] After @Login - blob-report contents:"
+          echo "[Run 1] After Login - blob-report contents:"
           ls -lh blob-report/
 
-          # --- Run 2: Cleanup step ---
-          # JOB_NAME still not set → OVERWRITES report-undefined.zip
-          echo "Run 2 (@cleanup results)" > /tmp/run2.txt
+          # Run 2: Cleanup step - no JOB_NAME, overwrites same zip
+          printf 'run2-cleanup-results\n' > /tmp/run2.txt
           zip -j blob-report/report-${JOB_NAME}.zip /tmp/run2.txt
-          echo "[Run 2] After @cleanup - blob-report contents (run 1 is GONE):"
+          echo "[Run 2] After Cleanup - blob-report (run 1 overwritten):"
           ls -lh blob-report/
 
-          # --- Run 3: Main regression ---
-          # JOB_NAME still not set → OVERWRITES report-undefined.zip again
-          echo "Run 3 (@CoreRegression results)" > /tmp/run3.txt
+          # Run 3: Main regression - no JOB_NAME, overwrites again
+          printf 'run3-regression-results\n' > /tmp/run3.txt
           zip -j blob-report/report-${JOB_NAME}.zip /tmp/run3.txt
-          echo "[Run 3] After @CoreRegression - blob-report contents (runs 1+2 are GONE):"
+          echo "[Run 3] After Regression - blob-report (runs 1+2 overwritten):"
           ls -lh blob-report/
 
           echo ""
-          echo "============================================================"
-          echo "RESULT: Only 1 zip file - run1 and run2 data is permanently lost"
-          echo "This is why test results show incomplete/empty data"
           echo "============================================================"
           ZIP_COUNT=$(ls blob-report/*.zip 2>/dev/null | wc -l)
-          echo "Zip files in blob-report: $ZIP_COUNT (expected 3, got $ZIP_COUNT)"
-          echo "Content of surviving zip:"
+          echo "Zip count: $ZIP_COUNT (expected 3, got $ZIP_COUNT) - BUG CONFIRMED"
+          echo "Content of surviving zip (only run 3 data):"
           unzip -p blob-report/report-${JOB_NAME}.zip
+          echo "============================================================"
 
-          # Simulate the incomplete results.json that gets published
-          cat > results.json << 'EOF'
-          {
-            "suites": [
-              {
-                "title": "regression.test.ts",
-                "specs": [
-                  { "title": "@CoreRegression - test 1", "ok": true },
-                  { "title": "@CoreRegression - test 2", "ok": true },
-                  { "title": "@CoreRegression - test 3", "ok": true }
-                ]
-              }
-            ]
-          }
-          EOF
-          echo ""
-          echo "results.json has 3 tests (only last run) - @Login and @cleanup results are missing"
+          printf '{"suites":[{"title":"regression.test.ts","specs":[{"title":"CoreRegression test 1","ok":true},{"title":"CoreRegression test 2","ok":true},{"title":"CoreRegression test 3","ok":true}]}]}\n' > results.json
+          echo "results.json has 3 tests (last run only) - Login and Cleanup results are lost"
 
       - name: Publish test results (incomplete - demonstrates the bug)
         uses: cloudbees-io/publish-test-results@v2
