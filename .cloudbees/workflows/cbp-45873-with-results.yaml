@@ -1,0 +1,65 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: CBP-45873 with results - all runs captured
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+jobs:
+  repro-fixed:
+    steps:
+      - name: Checkout
+        uses: cloudbees-io/checkout@v1
+
+      - name: Run tests with JOB_NAME set (fix applied)
+        uses: docker://alpine:3.19
+        run: |
+          mkdir -p blob-report
+
+          echo "============================================================"
+          echo "WITH FIX: JOB_NAME set before each run"
+          echo "Each run writes a uniquely named blob zip"
+          echo "============================================================"
+
+          # Run 1: Login step - JOB_NAME set
+          export JOB_NAME="Login"
+          echo "Run 1 (@Login results)" > /tmp/run1.txt
+          zip -j blob-report/report-${JOB_NAME}.zip /tmp/run1.txt
+          echo "[Run 1] After @Login - blob-report contents:"
+          ls -lh blob-report/
+
+          # Run 2: Cleanup step - JOB_NAME set
+          export JOB_NAME="Cleanup"
+          echo "Run 2 (@cleanup results)" > /tmp/run2.txt
+          zip -j blob-report/report-${JOB_NAME}.zip /tmp/run2.txt
+          echo "[Run 2] After @cleanup - blob-report contents:"
+          ls -lh blob-report/
+
+          # Run 3: Main regression - JOB_NAME set
+          export JOB_NAME="CoreRegression"
+          echo "Run 3 (@CoreRegression results)" > /tmp/run3.txt
+          zip -j blob-report/report-${JOB_NAME}.zip /tmp/run3.txt
+          echo "[Run 3] After @CoreRegression - blob-report contents:"
+          ls -lh blob-report/
+
+          echo ""
+          echo "============================================================"
+          echo "RESULT: 3 separate zips - all run data preserved"
+          echo "============================================================"
+          ZIP_COUNT=$(ls blob-report/*.zip 2>/dev/null | wc -l)
+          echo "Zip files in blob-report: $ZIP_COUNT (expected 3, got $ZIP_COUNT)"
+
+          cat > results.json << 'EOF'
+{"suites":[{"title":"login.test.ts","specs":[{"title":"@Login - setup session","ok":true}]},{"title":"cleanup.test.ts","specs":[{"title":"@cleanup - cleanup test data","ok":true}]},{"title":"regression.test.ts","specs":[{"title":"@CoreRegression - test 1","ok":true},{"title":"@CoreRegression - test 2","ok":true},{"title":"@CoreRegression - test 3","ok":true}]}]}
+EOF
+          echo ""
+          echo "results.json has 5 tests from all 3 runs - complete data"
+
+      - name: Publish test results (complete - all 5 tests)
+        uses: cloudbees-io/publish-test-results@v2
+        if: ${{ always() }}
+        with:
+          test-type: playwright
+          results-path: results.json

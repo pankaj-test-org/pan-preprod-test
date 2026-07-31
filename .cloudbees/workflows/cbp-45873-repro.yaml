@@ -1,0 +1,81 @@
+apiVersion: automation.cloudbees.io/v1alpha1
+kind: workflow
+name: CBP-45873 repro - blob report overwrite
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+jobs:
+  repro:
+    steps:
+      - name: Checkout
+        uses: cloudbees-io/checkout@v1
+
+      - name: Reproduce blob report overwrite bug
+        uses: docker://alpine:3.19
+        run: |
+          mkdir -p blob-report
+
+          echo "============================================================"
+          echo "REPRODUCING BUG: multiple test runs without JOB_NAME set"
+          echo "Each run writes to blob-report/report-\${JOB_NAME}.zip"
+          echo "When JOB_NAME is unset, all runs write report-undefined.zip"
+          echo "============================================================"
+
+          # --- Run 1: Login step ---
+          # JOB_NAME not set → writes report-undefined.zip
+          echo "Run 1 (@Login results)" > /tmp/run1.txt
+          zip -j blob-report/report-${JOB_NAME}.zip /tmp/run1.txt
+          echo "[Run 1] After @Login - blob-report contents:"
+          ls -lh blob-report/
+
+          # --- Run 2: Cleanup step ---
+          # JOB_NAME still not set → OVERWRITES report-undefined.zip
+          echo "Run 2 (@cleanup results)" > /tmp/run2.txt
+          zip -j blob-report/report-${JOB_NAME}.zip /tmp/run2.txt
+          echo "[Run 2] After @cleanup - blob-report contents (run 1 is GONE):"
+          ls -lh blob-report/
+
+          # --- Run 3: Main regression ---
+          # JOB_NAME still not set → OVERWRITES report-undefined.zip again
+          echo "Run 3 (@CoreRegression results)" > /tmp/run3.txt
+          zip -j blob-report/report-${JOB_NAME}.zip /tmp/run3.txt
+          echo "[Run 3] After @CoreRegression - blob-report contents (runs 1+2 are GONE):"
+          ls -lh blob-report/
+
+          echo ""
+          echo "============================================================"
+          echo "RESULT: Only 1 zip file - run1 and run2 data is permanently lost"
+          echo "This is why test results show incomplete/empty data"
+          echo "============================================================"
+          ZIP_COUNT=$(ls blob-report/*.zip 2>/dev/null | wc -l)
+          echo "Zip files in blob-report: $ZIP_COUNT (expected 3, got $ZIP_COUNT)"
+          echo "Content of surviving zip:"
+          unzip -p blob-report/report-${JOB_NAME}.zip
+
+          # Simulate the incomplete results.json that gets published
+          cat > results.json << 'EOF'
+          {
+            "suites": [
+              {
+                "title": "regression.test.ts",
+                "specs": [
+                  { "title": "@CoreRegression - test 1", "ok": true },
+                  { "title": "@CoreRegression - test 2", "ok": true },
+                  { "title": "@CoreRegression - test 3", "ok": true }
+                ]
+              }
+            ]
+          }
+          EOF
+          echo ""
+          echo "results.json has 3 tests (only last run) - @Login and @cleanup results are missing"
+
+      - name: Publish test results (incomplete - demonstrates the bug)
+        uses: cloudbees-io/publish-test-results@v2
+        if: ${{ always() }}
+        with:
+          test-type: playwright
+          results-path: results.json
