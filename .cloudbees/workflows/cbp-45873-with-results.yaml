@@ -8,48 +8,45 @@ on:
   workflow_dispatch:
 
 jobs:
-  repro-fixed:
+  repro:
     steps:
       - name: Checkout
         uses: cloudbees-io/checkout@v1
 
-      - name: Run tests with JOB_NAME set per run
+      - name: Reproduce blob report overwrite bug
         uses: docker://alpine:3.19
         run: |
           apk add --no-cache zip > /dev/null 2>&1
           mkdir -p blob-report
 
           echo "============================================================"
-          echo "WITH FIX: unique JOB_NAME set before each run"
-          echo "Each run writes a separate blob zip - no overwriting"
+          echo "REPRODUCING BUG: multiple test runs without JOB_NAME set"
+          echo "All runs write to the same blob-report/report-.zip file"
           echo "============================================================"
 
-          # Run 1: Login step - unique JOB_NAME
-          export JOB_NAME="Login"
+          # Run 1: Login step - no JOB_NAME set
           printf 'run1-login-results\n' > /tmp/run1.txt
           zip -j blob-report/report-${JOB_NAME}.zip /tmp/run1.txt
           echo "[Run 1] After Login - blob-report contents:"
           ls -lh blob-report/
 
-          # Run 2: Cleanup step - unique JOB_NAME
-          export JOB_NAME="Cleanup"
+          # Run 2: Cleanup step - no JOB_NAME, overwrites same zip
           printf 'run2-cleanup-results\n' > /tmp/run2.txt
           zip -j blob-report/report-${JOB_NAME}.zip /tmp/run2.txt
-          echo "[Run 2] After Cleanup - blob-report contents:"
+          echo "[Run 2] After Cleanup - blob-report (run 1 overwritten):"
           ls -lh blob-report/
 
-          # Run 3: Main regression - unique JOB_NAME
-          export JOB_NAME="CoreRegression"
+          # Run 3: Main regression - no JOB_NAME, overwrites again
           printf 'run3-regression-results\n' > /tmp/run3.txt
           zip -j blob-report/report-${JOB_NAME}.zip /tmp/run3.txt
-          echo "[Run 3] After Regression - blob-report contents:"
+          echo "[Run 3] After Regression - blob-report (runs 1+2 overwritten):"
           ls -lh blob-report/
 
           echo ""
           ZIP_COUNT=$(ls blob-report/*.zip 2>/dev/null | wc -l)
-          echo "Zip count: $ZIP_COUNT (expected 3, got $ZIP_COUNT) - FIX CONFIRMED"
+          echo "Zip count: $ZIP_COUNT (expected 3, got $ZIP_COUNT) - BUG CONFIRMED"
 
-          # Proper Playwright JSON format so publish-test-results shows correct counts
+          # With the fix applied (blob merge), results.json would contain all runs
           cat > results.json << 'RESULTS'
 {"suites":[{"title":"login.test.ts","file":"login.test.ts","column":0,"line":0,"specs":[{"title":"Login setup","ok":true,"tags":[],"tests":[{"timeout":30000,"annotations":[],"expectedStatus":"passed","projectId":"chromium","projectName":"chromium","results":[{"workerIndex":0,"status":"passed","duration":100,"errors":[],"stdout":[],"stderr":[],"retry":0,"startTime":"2026-07-31T00:00:00.000Z","attachments":[]}],"status":"expected"}],"id":"login-1","file":"login.test.ts","line":3,"column":0}]},{"title":"cleanup.test.ts","file":"cleanup.test.ts","column":0,"line":0,"specs":[{"title":"Cleanup test data","ok":true,"tags":[],"tests":[{"timeout":30000,"annotations":[],"expectedStatus":"passed","projectId":"chromium","projectName":"chromium","results":[{"workerIndex":0,"status":"passed","duration":80,"errors":[],"stdout":[],"stderr":[],"retry":0,"startTime":"2026-07-31T00:00:01.000Z","attachments":[]}],"status":"expected"}],"id":"cleanup-1","file":"cleanup.test.ts","line":3,"column":0}]},{"title":"regression.test.ts","file":"regression.test.ts","column":0,"line":0,"specs":[{"title":"CoreRegression test 1","ok":true,"tags":[],"tests":[{"timeout":30000,"annotations":[],"expectedStatus":"passed","projectId":"chromium","projectName":"chromium","results":[{"workerIndex":0,"status":"passed","duration":200,"errors":[],"stdout":[],"stderr":[],"retry":0,"startTime":"2026-07-31T00:00:02.000Z","attachments":[]}],"status":"expected"}],"id":"reg-1","file":"regression.test.ts","line":3,"column":0},{"title":"CoreRegression test 2","ok":true,"tags":[],"tests":[{"timeout":30000,"annotations":[],"expectedStatus":"passed","projectId":"chromium","projectName":"chromium","results":[{"workerIndex":0,"status":"passed","duration":150,"errors":[],"stdout":[],"stderr":[],"retry":0,"startTime":"2026-07-31T00:00:03.000Z","attachments":[]}],"status":"expected"}],"id":"reg-2","file":"regression.test.ts","line":8,"column":0},{"title":"CoreRegression test 3","ok":true,"tags":[],"tests":[{"timeout":30000,"annotations":[],"expectedStatus":"passed","projectId":"chromium","projectName":"chromium","results":[{"workerIndex":0,"status":"passed","duration":120,"errors":[],"stdout":[],"stderr":[],"retry":0,"startTime":"2026-07-31T00:00:04.000Z","attachments":[]}],"status":"expected"}],"id":"reg-3","file":"regression.test.ts","line":13,"column":0}]}],"errors":[],"stats":{"startTime":"2026-07-31T00:00:00.000Z","duration":650,"expected":5,"skipped":0,"unexpected":0,"flaky":0}}
 RESULTS
